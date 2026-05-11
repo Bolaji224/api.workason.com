@@ -65,4 +65,11 @@ class AdminUserController extends Controller
 
         return response()->json(['status' => 'success', 'message' => 'Logged out from all devices']);
     }
+    
+    public function destroy($id)
+{
+    $user = User::findOrFail($id);
+    $user->delete();
+    return response()->json(['status' => 'success', 'message' => 'User deleted']);
+}
 }

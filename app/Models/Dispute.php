@@ -8,17 +8,21 @@ use App\Models\User;
 
 class Dispute extends Model
 {
-    protected $fillable = [
-        'full_name',
-        'email',
-        'phone',
-        'priority',
-        'status',
-        'description',
-        'dispute_category',
-        'subject',
-        'attachments',
-    ];
+  protected $fillable = [
+    'user_id',
+    'user_type',        // ✅ Must be here
+    'full_name',
+    'email',
+    'phone',
+    'employer_name',
+    'candidate_name',   // ✅ Must be here
+    'dispute_category',
+    'subject',
+    'description',
+    'priority',
+    'status',
+    'attachments',
+];
 
     protected $casts = [
         'attachments' => 'array',

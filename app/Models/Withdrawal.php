@@ -13,6 +13,8 @@ class Withdrawal extends Model
         'bank_name',
         'account_number',
         'account_name',
+        'swift_code',
+        'iban',
         'status',
         'reference',
         'admin_note',

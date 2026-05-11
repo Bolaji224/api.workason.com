@@ -7,19 +7,21 @@ use App\Http\Resources\ChatResource;
 use App\Models\Chat;
 use App\Models\Message;
 use Illuminate\Http\Request;
+use App\Jobs\SendNewMessageEmail;
 
 class ChatController extends Controller
 {
+    // ✅ Restored
     public function index()
     {
         $chats = Chat::with(["Host", "ChatUser", "messages"])
             ->where("user1", auth()->user()->id)
             ->orWhere("user2", auth()->user()->id)
             ->get();
-
         return okResponse("Chats fetched", ChatOnlyResource::collection($chats));
     }
 
+    // ✅ Restored
     public function show($id)
     {
         $chat = Chat::with(["Host", "ChatUser", "messages"])
@@ -35,17 +37,18 @@ class ChatController extends Controller
         return okResponse("Chat fetched", new ChatResource($chat));
     }
 
+    // ✅ Updated to support file_url
     public function sendMessage(Request $request)
     {
         $request->validate([
-            'message' => 'required|string',
+            'message'     => 'nullable|string',
             'receiver_id' => 'required|integer',
+            'file_url'    => 'nullable|string',
         ]);
 
         $userId = auth()->user()->id;
         $receiverId = $request->receiver_id;
 
-        // Find or create chat
         $chat = Chat::where(function ($q) use ($userId, $receiverId) {
             $q->where('user1', $userId)->where('user2', $receiverId);
         })->orWhere(function ($q) use ($userId, $receiverId) {
@@ -59,18 +62,23 @@ class ChatController extends Controller
             ]);
         }
 
-        // Create message
         $message = Message::create([
-            'message' => $request->message,
-            'user_id' => $userId,
-            'chat_id' => $chat->id,
+            'message'  => $request->message ?? '',
+            'file_url' => $request->file_url ?? null,
+            'user_id'  => $userId,
+            'chat_id'  => $chat->id,
         ]);
 
-        // Broadcast new message to Pusher
-        broadcast(new \App\Events\MessageSent($message))->toOthers();
+        try {
+            broadcast(new \App\Events\MessageSent($message))->toOthers();
+        } catch (\Exception $e) {
+            \Log::warning('Broadcast failed (WebSocket server may be down): ' . $e->getMessage());
+        }
+
+        SendNewMessageEmail::dispatch($message, $receiverId)
+            ->delay(now()->addSeconds(30));
 
         $chat->load(["Host", "ChatUser", "messages"]);
-
         return okResponse("Message sent", new ChatResource($chat));
     }
 }

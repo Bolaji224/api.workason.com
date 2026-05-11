@@ -15,3 +15,15 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/email/verify/{id}/{hash}', [VerifyEmailController::class, 'verify'])->middleware(['signed'])->name('verification.verify');
+
+Route::get('/file/smartcv/{filename}', function ($filename) {
+    $path = storage_path('app/public/smartcv/' . $filename);
+
+    if (!file_exists($path)) {
+        abort(404);
+    }
+
+    return response()->file($path, [
+        'Content-Type' => 'application/pdf',
+    ]);
+});

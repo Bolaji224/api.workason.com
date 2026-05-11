@@ -53,4 +53,66 @@ class WalletController extends Controller
             'wallet_token' => $token,
         ]);
     }
+
+    /**
+ * Get candidate transaction history (derived from payments + withdrawals)
+ */
+public function transactionHistory(Request $request)
+{
+    $user = auth()->user();
+
+    // Credits — completed payments where admin approved
+    $payments = \App\Models\EmployerPayment::where('candidate_id', $user->id)
+        ->where('status', 'completed')
+        ->get()
+        ->map(function ($payment) {
+            return [
+                'id'                  => 'pay_' . $payment->id,
+                'type'                => 'credit',
+                'amount'              => (float) $payment->freelancer_receives,
+                'source'              => 'employer_payment',
+                'description'         => 'Job Payment',
+                'job_amount'          => (float) $payment->amount,
+                'platform_commission' => (float) $payment->platform_commission,
+                'commission_rate'     => 20,
+                'created_at'          => $payment->paid_at ?? $payment->created_at,
+            ];
+        });
+
+    // Debits — withdrawal requests
+    $withdrawals = \App\Models\Withdrawal::where('user_id', $user->id)
+        ->get()
+        ->map(function ($withdrawal) {
+            return [
+                'id'                  => 'wd_' . $withdrawal->id,
+                'type'                => 'debit',
+                'amount'              => (float) $withdrawal->amount,
+                'source'              => 'withdrawal',
+                'description'         => 'Withdrawal — ' . $withdrawal->bank_name,
+                'job_amount'          => null,
+                'platform_commission' => null,
+                'commission_rate'     => null,
+                'status'              => $withdrawal->status,
+                'created_at'          => $withdrawal->created_at,
+            ];
+        });
+
+    // Merge, sort newest first, paginate manually
+    $perPage = 15;
+    $page = (int) $request->get('page', 1);
+
+    $all = $payments->concat($withdrawals)
+        ->sortByDesc('created_at')
+        ->values();
+
+    $total = $all->count();
+    $items = $all->slice(($page - 1) * $perPage, $perPage)->values();
+
+    return response()->json([
+        'data'         => $items,
+        'current_page' => $page,
+        'last_page'    => (int) ceil($total / $perPage),
+        'total'        => $total,
+    ]);
+}
 }

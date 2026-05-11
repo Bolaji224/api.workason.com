@@ -37,7 +37,7 @@ class AuthController extends Controller
         ]]);
     }
 
-    public function register(Request $request)
+    public function register (Request $request)
     {
         $validated = $request->all();
         $role = strtolower($request->input('role', 'user'));

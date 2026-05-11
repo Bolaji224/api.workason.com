@@ -1,0 +1,34 @@
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # 1. FIX THE 409 CONFLICT: Intercept OPTIONS requests and return 200 OK immediately
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ $1 [R=200,L]
+
+    # 2. Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # 3. Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # 4. Send Requests To Front Controller...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# 5. Only set headers if Laravel (the app) doesn't set them
+<IfModule mod_headers.c>
+    Header matching "Access-Control-Allow-Origin" unset
+    Header always set Access-Control-Allow-Origin "https://workason.com"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With, x-api-key, Accept"
+    Header always set Access-Control-Allow-Credentials "true"
+</IfModule>

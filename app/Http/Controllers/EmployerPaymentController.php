@@ -31,9 +31,9 @@ class EmployerPaymentController extends Controller
     {
         // Freelancer side (deducted from payment)
         $freelancerCommission = $baseAmount * self::FREELANCER_COMMISSION_RATE;
-        $freelancerVAT = $freelancerCommission * self::VAT_RATE;
-        $totalFreelancerDeduction = $freelancerCommission + $freelancerVAT;
-        $freelancerReceives = $baseAmount - $totalFreelancerDeduction;
+        // $freelancerVAT = $freelancerCommission * self::VAT_RATE;
+        // $totalFreelancerDeduction = $freelancerCommission + $freelancerVAT;
+        $freelancerReceives = $baseAmount - $freelancerCommission;
 
         // Employer side (added to payment)
         $employerFee = $baseAmount * self::EMPLOYER_FEE_RATE;
@@ -43,7 +43,7 @@ class EmployerPaymentController extends Controller
 
         // Platform earnings (for reference)
         $platformEarnings = $freelancerCommission + $employerFee;
-        $platformVAT = $freelancerVAT + $employerVAT;
+        $platformVAT = $employerVAT;
         $platformTotal = $platformEarnings + $platformVAT;
 
         return [
@@ -51,7 +51,7 @@ class EmployerPaymentController extends Controller
             
             // Freelancer breakdown
             'freelancer_commission' => round($freelancerCommission, 2),
-            'freelancer_commission_vat' => round($freelancerVAT, 2),
+            'freelancer_commission_vat' => 0,
             'freelancer_receives' => round($freelancerReceives, 2),
             
             // Employer breakdown
@@ -393,9 +393,9 @@ class EmployerPaymentController extends Controller
             );
 
             if (method_exists($wallet, 'credit')) {
-                $wallet->credit((float) $payment->amount, 'employer_payment', $payment->id);
+                $wallet->credit((float) $payment->freelancer_receives, 'employer_payment', $payment->id);
             } else {
-                $wallet->increment('balance', (float) $payment->amount);
+                $wallet->increment('balance', (float) $payment->freelancer_receives);
             }
 
             DB::commit();

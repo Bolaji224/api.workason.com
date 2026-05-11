@@ -1,9 +1,6 @@
 <?php
-
 namespace App\Http\Resources;
-
 use Illuminate\Http\Resources\Json\JsonResource;
-
 class JobResource extends JsonResource
 {
     public function toArray($request)
@@ -12,8 +9,6 @@ class JobResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'company' => $this->whenLoaded('company'),
-
-            // ✅ Properly format related types with only useful info
             'work_type' => $this->whenLoaded('worktype', function () {
                 return [
                     'id' => $this->worktype->id ?? null,
@@ -26,18 +21,22 @@ class JobResource extends JsonResource
                     'title' => $this->jobtype->title ?? null,
                 ];
             }),
-
             'job_role' => $this->job_role,
             'salary' => $this->salary,
             'salary_narration' => $this->naration ?? $this->salary_narration,
             'education' => $this->education,
-            'location' => $this->location 
-    ?: trim("{$this->city} {$this->state} {$this->country}") ?: 'N/A',
+            'location' => $this->location
+                ?: trim("{$this->city} {$this->state} {$this->country}") ?: 'N/A',
             'description' => $this->description,
             'requirements' => $this->requirements,
             'experience' => $this->experience,
             'budget' => $this->budget,
             'date_posted' => $this->created_at ? $this->created_at->toDateString() : $this->date_published,
+
+            // ✅ Add these two lines
+            'posted'    => $this->created_at ? $this->created_at->diffForHumans() : 'recently',
+            'posted_at' => $this->created_at ? $this->created_at->toDateTimeString() : null,
+
             'slug' => $this->slug,
             'status' => $this->status,
             'benefits' => $this->benefits,
@@ -46,15 +45,11 @@ class JobResource extends JsonResource
                     ? $this->skills
                     : explode(',', $this->skills))
                 : [],
-
-            // Departments
             'departments' => $this->whenLoaded('departments', function () {
                 return $this->departments->map(function ($dept) {
                     return $dept->department ?? $dept;
                 });
             }),
-
-            // Applicants
             'applicants' => $this->whenLoaded('applicants', function () {
                 return $this->applicants;
             }),

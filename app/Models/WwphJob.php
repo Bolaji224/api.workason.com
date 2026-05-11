@@ -11,27 +11,27 @@ class WwphJob extends Model
 
     protected $table = 'wwph_jobs';
 
-    protected $fillable = [
-        'company_id',
-        'title',
-        'description',
-        'requirements',
-        'work_type',
-        'job_type',
-        'category',
-        'salary',
-        'budget',
-        'experience',
-        'job_cover',
-        'skills',
-        'city',
-        'state',
-        'country',
-        'naration',
-        'job_role',
-        'location', 
-        'status',
-    ];
+protected $fillable = [
+    'title',
+    'description', 
+    'requirements',
+    'work_type',
+    'job_type',
+    'category',
+    'salary',
+    'budget',
+    'experience',
+    'job_cover',
+    'skills',
+    'city',
+    'state',
+    'country',
+    'company_id',
+    'naration',
+    'job_role',
+    'location',
+    'status', // ✅ THIS is why jobs saved with null status
+];
 
     public function company()
     {

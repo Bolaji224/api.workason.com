@@ -68,12 +68,19 @@ class UserController extends Controller
             
         ]);
         $user = auth()->user();
-        if ($request->file("file")) {
-            $fileName = time() . '_' . $request->file('file')->getClientOriginalName();
-            $request->file('file')->move(public_path('uploads'), $fileName);
-            $user->avatar = "/uploads/" . $fileName;
-        }
-
+if ($request->file("file")) {
+    $fileName = time() . '_' . $request->file('file')->getClientOriginalName();
+    $destination = '/home1/owkvvkte/public_html/website_e166ca66/uploads';
+    
+    \Log::info('Saving to: ' . $destination);  // ADD THIS
+    
+    if (!is_dir($destination)) {
+        mkdir($destination, 0755, true);
+    }
+    
+    $request->file('file')->move($destination, $fileName);
+    $user->avatar = "https://workason.com/uploads/" . $fileName;
+}
         if ($request->file("cv")) {
             $cvFile = time() . '_' . $request->file('cv')->getClientOriginalName();
             $request->file('cv')->move(public_path('uploads/cv'), $cvFile);

@@ -27,8 +27,14 @@ class JobsController extends Controller
             $jobs = $jobs->where("title", "LIKE", "%{$title}%");
         }
 
+        // ✅ Search across location, city, state and country
         if ($location != "") {
-            $jobs = $jobs->where("location", "LIKE", "%{$location}%");
+            $jobs = $jobs->where(function ($q) use ($location) {
+                $q->where("location", "LIKE", "%{$location}%")
+                  ->orWhere("city",     "LIKE", "%{$location}%")
+                  ->orWhere("state",    "LIKE", "%{$location}%")
+                  ->orWhere("country",  "LIKE", "%{$location}%");
+            });
         }
 
         if ($jobType != "") {
@@ -38,7 +44,7 @@ class JobsController extends Controller
             }
         }
 
-        $jobs = $jobs->get();
+        $jobs   = $jobs->get();
         $recent = JobResource::collection($jobs);
 
         return okResponse("fetched jobs", $recent);
@@ -50,15 +56,36 @@ class JobsController extends Controller
         $location = $request->query("location");
         $jobType  = $request->query("jobType");
 
+        $appliedJobIds = JobApplication::where("user_id", auth()->user()->id)
+            ->pluck("job_id")
+            ->toArray();
+
+        \Log::info("Jobs Alert Debug", [
+            "user_id"           => auth()->user()->id,
+            "applied_ids"       => $appliedJobIds,
+            "total_active_jobs" => WwphJob::where("status", "active")->count(),
+            "available_jobs"    => WwphJob::where("status", "active")
+                                    ->whereNotIn("id", $appliedJobIds)
+                                    ->count(),
+        ]);
+
         $jobs = WwphJob::with(['company', 'jobtype', 'worktype', 'departments.department'])
-            ->where("status", "active");
+            ->where("status", "active")
+            ->whereNotIn("id", $appliedJobIds)
+            ->orderBy("id", "DESC");
 
         if ($title != "") {
             $jobs = $jobs->where("title", "LIKE", "%{$title}%");
         }
 
+        // ✅ Search across location, city, state and country
         if ($location != "") {
-            $jobs = $jobs->where("location", "LIKE", "%{$location}%");
+            $jobs = $jobs->where(function ($q) use ($location) {
+                $q->where("location", "LIKE", "%{$location}%")
+                  ->orWhere("city",     "LIKE", "%{$location}%")
+                  ->orWhere("state",    "LIKE", "%{$location}%")
+                  ->orWhere("country",  "LIKE", "%{$location}%");
+            });
         }
 
         if ($jobType != "") {
@@ -68,7 +95,7 @@ class JobsController extends Controller
             }
         }
 
-        $jobs = $jobs->take(10)->get();
+        $jobs   = $jobs->take(10)->get();
         $recent = JobResource::collection($jobs);
 
         return okResponse("fetched jobs", $recent);
@@ -94,7 +121,7 @@ class JobsController extends Controller
     {
         if (!SavedJob::where("job_id", $id)->where("user_id", auth()->user()->id)->first()) {
             SavedJob::create([
-                "job_id" => $id,
+                "job_id"  => $id,
                 "user_id" => auth()->user()->id
             ]);
         }
@@ -114,53 +141,45 @@ class JobsController extends Controller
     public function applyJob(Request $request, $jobId)
     {
         $request->validate([
-            'cv_url' => 'required|string',
+            'cv_url'           => 'required|string',
             'experience_years' => 'required|numeric|min:0',
-            'reason' => 'required|string|max:1000',
+            'reason'           => 'required|string|max:1000',
         ]);
-    
 
         $user = auth()->user();
 
-        // Save application using SmartCV URL
+        $alreadyApplied = JobApplication::where("job_id", $jobId)
+            ->where("user_id", $user->id)
+            ->first();
+
+        if ($alreadyApplied) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'You have already applied for this job.',
+            ], 409);
+        }
+
         $application = JobApplication::create([
-            'job_id' => $jobId,
-            'user_id' => $user->id,
-            'cv' => $request->cv_url,
+            'job_id'           => $jobId,
+            'user_id'          => $user->id,
+            'cv'               => $request->cv_url,
             'experience_years' => $request->experience_years,
-            'reason' => $request->reason,
-            'status' => 'pending',
-        ]);    
+            'reason'           => $request->reason,
+            'status'           => 'pending',
+        ]);
+
+        \Log::info("Job Application Saved", [
+            "user_id"        => $user->id,
+            "job_id"         => $jobId,
+            "application_id" => $application->id,
+        ]);
 
         return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => 'Application submitted successfully.',
-            'data' => $application
+            'data'    => $application,
         ]);
     }
-
-    // public function homepage()
-    // {
-    //     $recent = WwphJob::with(["company", "jobtype", "worktype"])
-    //         ->where("status", "active")
-    //         ->orderBy("id", "DESC")
-    //         ->take(10)
-    //         ->get();
-
-    //     $departments = Department::with("DepartmentJobs")
-    //         ->whereHas("DepartmentJobs")
-    //         ->where("status", "active")
-    //         ->take(5)
-    //         ->get();
-
-    //     $recent = JobResource::collection($recent);
-    //     $departments = DepartmentJobResource::collection($departments);
-
-    //     return okResponse("jobs fetched", [
-    //         "recent" => $recent,
-    //         "departments" => $departments,
-    //     ]);
-    // }
 
     public function fetchJobTypes()
     {

@@ -1,4 +1,4 @@
-<?php
+<?php 
 
 namespace App\Http\Controllers;
 
@@ -35,7 +35,16 @@ class WithdrawalController extends Controller
             'bank_name' => 'required|string|max:255',
             'account_number' => 'required|string|min:10|max:10',
             'account_name' => 'required|string|max:255',
+            'swift_code'     => 'nullable|string|max:11',
+            'iban'           => 'nullable|string|max:34',
         ]);
+
+        if (!$request->account_number && !$request->iban) {
+    return response()->json([
+        'status' => 'error',
+        'error'  => 'Please provide either an account number or IBAN.',
+    ], 422);
+}
 
         $user = auth()->user();
 
@@ -70,7 +79,7 @@ class WithdrawalController extends Controller
                 ->where('work_status', 'approved')
                 ->get();
 
-            $escrowBalance = $approvedEscrowPayments->sum('amount');
+            $escrowBalance = $approvedEscrowPayments->sum('freelancer_receives');
 
             $approvedMilestones = \App\Models\Milestone::whereHas('payment', function ($query) use ($user) {
                     $query->where('candidate_id', $user->id)
@@ -107,7 +116,7 @@ class WithdrawalController extends Controller
                     ->where('status', 'completed')
                     ->where('type', 'escrow')
                     ->where('work_status', 'pending')
-                    ->count();
+->count();
 
                 $pendingMilestones = \App\Models\Milestone::whereHas('payment', function ($query) use ($user) {
                         $query->where('candidate_id', $user->id)
@@ -204,7 +213,8 @@ class WithdrawalController extends Controller
      */
     public function getAvailableBalance(Request $request)
     {
-        $user = auth()->user();
+        $user =
+auth()->user();
         $wallet = Wallet::where('user_id', $user->id)->first();
 
         if (!$wallet) {
@@ -219,7 +229,7 @@ class WithdrawalController extends Controller
             ->where('status', 'completed')
             ->where('type', 'escrow')
             ->where('work_status', 'approved')
-            ->sum('amount');
+            ->sum('freelancer_receives');
 
         $approvedMilestoneBalance = \App\Models\Milestone::whereHas('payment', function ($query) use ($user) {
                 $query->where('candidate_id', $user->id)

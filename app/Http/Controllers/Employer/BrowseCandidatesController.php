@@ -51,7 +51,8 @@ $candidates = User::where('role', 1)
     'experience',
     'expected_salary',
     'cv',
-    'bio'
+    'bio',
+    'smartcv'
 )
 ->get();
 

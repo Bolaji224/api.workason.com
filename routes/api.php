@@ -25,8 +25,11 @@ use App\Http\Controllers\EmployerPaymentController;
 use Illuminate\Support\Facades\Broadcast;
 use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\SmartStartController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\NewsletterController;
+use App\Http\Controllers\ContactController;
 
 
 /*
@@ -34,6 +37,10 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 | API Routes
 |--------------------------------------------------------------------------
 */
+// Handle all OPTIONS preflight requests
+Route::options('/{any}', function() {
+    return response('', 200);
+})->where('any', '.*');
 
 Route::group(['middleware' => 'XssSanitizer'], function () {
     Route::group(['middleware' => 'api', 'prefix' => 'v1'], function ($router) {
@@ -70,6 +77,9 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
             Route::get('/users/{id}', [AdminUserController::class, 'show']);
             Route::post('/users/{id}/approve', [AdminUserController::class, 'approve']);
             Route::get('/reports', [ReportController::class, 'index']);
+            Route::delete('/users/{id}', [AdminUserController::class, 'destroy']);
+            Route::post('/reports/{id}/resolve', [ReportController::class, 'resolve']);
+            
         });
 
         Route::get('test-auth', function (Request $request) {
@@ -141,6 +151,8 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
                 Route::post('/change-password', 'changePassword');
             });
         });
+        
+        
 
         Route::get('/resources', [ResourceController::class, 'resource']);
         Route::get('/jobs', [JobsController::class, 'index']);
@@ -164,6 +176,7 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
         });
 
         Route::post('/dispute/submit', [DisputeController::class, 'store'])->name('dispute.submit');
+   
 
         Route::middleware(['verified', 'jwt.verify', 'auth:api'])->group(function () {
 
@@ -181,6 +194,8 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
                 Route::post('/profile/update-smartcv', 'updateSmartCv');
                 Route::post('/cv', [CvController::class, 'generate']);
             });
+            
+            
 
             // SmartGuide routes
             Route::get('/smartguide', [SmartGuideController::class, 'show']);
@@ -194,6 +209,7 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
             // Wallet
             Route::get('/candidate/wallet/{userId}', [WalletController::class, 'getWallet']);
             Route::post('/candidate/wallet/generate-token', [WalletController::class, 'generateToken']);
+            Route::get('candidate/transactions', [WalletController::class, 'transactionHistory']);
 
             // Candidate withdrawals routes
             Route::get('/candidate/withdrawal-balance', [WithdrawalController::class, 'getAvailableBalance']);
@@ -211,11 +227,25 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
                 Route::get('/payments', [EmployerPaymentController::class, 'getPayments']);
                 Route::post('/verify-payment', [EmployerPaymentController::class, 'verifyPayment']);
                 Route::post('/send-message', [ChatController::class, 'sendMessage']);
+                    Route::post('/smartstart', [SmartStartController::class, 'store'])
+    ->withoutMiddleware(\App\Http\Middleware\XssSanitizer::class);
+    Route::get('/smartstart/callback', [SmartStartController::class, 'callback'])->name('smartstart.callback');
+         Route::get('/smartstart/success', [SmartStartController::class, 'success'])->name('smartstart.success');
+    Route::get('/smartstart/failed', [SmartStartController::class, 'failed'])->name('smartstart.failed');
 
                 Route::post('/approve-work', [EmployerPaymentController::class, 'approveWork']);
                 Route::post('/reject-work', [EmployerPaymentController::class, 'rejectWork']);
                 Route::post('/approve-milestone', [EmployerPaymentController::class, 'approveMilestone']);
                 Route::post('/reject-milestone', [EmployerPaymentController::class, 'rejectMilestone']);
+                Route::get('/profile',                     [\App\Http\Controllers\Employer\UserController::class, 'show']);
+                Route::post('/profile',                    [\App\Http\Controllers\Employer\UserController::class, 'update']);
+                Route::post('/profile/avatar', [\App\Http\Controllers\Employer\UserController::class, 'updateAvatar'])
+    ->withoutMiddleware(\App\Http\Middleware\XssSanitizer::class);  // ← before {id}
+                Route::get('/profile/delete-avatar',       [\App\Http\Controllers\Employer\UserController::class, 'deleteAvatar']);   // ← before {id}
+                Route::post('/profile/social-add',         [\App\Http\Controllers\Employer\UserController::class, 'addSocial']);      // ← before {id}
+                Route::post('/profile/social/{id}',        [\App\Http\Controllers\Employer\UserController::class, 'updateSocial']);   // ← {id} routes 
+                Route::post('/profile/social-delete/{id}', [\App\Http\Controllers\Employer\UserController::class, 'deleteSocial']);   // ← {id} routes last
+            
             });
 
             Route::get('candidate/applied-jobs', [AppliedJobsController::class, 'index']);
@@ -239,11 +269,15 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
                 Route::post('send-chat', 'sendMessage');
             });
         });
+        
 
         // ✅ REMOVED DUPLICATE ROUTE (was line 194)
 
         Route::get('/paystack/public-key', function () {
             return response()->json(['public_key' => config('paystack.public_key')]);
         });
+        
+        Route::post('newsletter', [NewsletterController::class, 'subscribe']);
+        Route::post('/contact', [ContactController::class, 'send']); 
     });
 });
