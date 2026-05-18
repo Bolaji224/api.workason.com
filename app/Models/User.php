@@ -53,6 +53,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
         'smartcv',
         'google_id',    // Add this
         'picture',      // Add this
+        'is_approved',
     ];
 
     /**
@@ -75,6 +76,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'is_approved' => 'boolean',
     ];
 
     public function getJWTIdentifier()
@@ -111,5 +113,15 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
     public function profile()
     {
         return $this->hasOne(Profile::class);
+    }
+
+    public function receivedReviews()
+    {
+        return $this->hasMany(Review::class, 'freelancer_id');
+    }
+
+    public function givenReviews()
+    {
+        return $this->hasMany(Review::class, 'client_id');
     }
 }

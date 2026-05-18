@@ -30,6 +30,7 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\NewsletterController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\ReviewController;
 
 
 /*
@@ -70,6 +71,9 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
 
             Route::get('/employers', [AdminEmployerController::class, 'index']);
             Route::get('/freelancers', [AdminFreelancerController::class, 'index']);
+            Route::get('/freelancers/{id}', [AdminFreelancerController::class, 'show']);
+            Route::post('/freelancers/{id}/approve', [AdminFreelancerController::class, 'approve']);
+            Route::post('/freelancers/{id}/revoke', [AdminFreelancerController::class, 'revoke']);
             Route::get('/jobs', [AdminJobController::class, 'index']);
             Route::post('/jobs/approve', [AdminJobController::class, 'approve']);
             Route::post('/jobs/delete', [AdminJobController::class, 'delete']);
@@ -233,6 +237,10 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
          Route::get('/smartstart/success', [SmartStartController::class, 'success'])->name('smartstart.success');
     Route::get('/smartstart/failed', [SmartStartController::class, 'failed'])->name('smartstart.failed');
 
+                // Review routes (employer only, auth required)
+                Route::post('/reviews', [ReviewController::class, 'store']);
+                Route::get('/reviews/can-review/{freelancerId}', [ReviewController::class, 'canReview']);
+
                 Route::post('/approve-work', [EmployerPaymentController::class, 'approveWork']);
                 Route::post('/reject-work', [EmployerPaymentController::class, 'rejectWork']);
                 Route::post('/approve-milestone', [EmployerPaymentController::class, 'approveMilestone']);
@@ -277,7 +285,11 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
             return response()->json(['public_key' => config('paystack.public_key')]);
         });
         
+        // Reviews (public read, no auth required)
+        Route::get('/reviews/freelancer/{id}', [ReviewController::class, 'getFreelancerReviews']);
+        Route::get('/reviews/freelancer/{id}/summary', [ReviewController::class, 'getFreelancerSummary']);
+
         Route::post('newsletter', [NewsletterController::class, 'subscribe']);
-        Route::post('/contact', [ContactController::class, 'send']); 
+        Route::post('/contact', [ContactController::class, 'send']);
     });
 });
