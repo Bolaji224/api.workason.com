@@ -10,47 +10,10 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
-    // public function __construct()
-    // {
-    //     $this->middleware('auth:api');
-    // }
-    
-    /**
-     * @OA\Get(
-     *      path="/api/v1/users",
-     *      operationId="index",
-     *      tags={"Users"},
-     *      summary="Get list of users",
-     *      description="Returns list of users",
-     *      security={{ "apiAuth": {} }},
-     *      @OA\Response(
-     *          response=200,
-     *          description="successful operation",
-     *          @OA\JsonContent()
-     *       ),
-     *      @OA\Response(
-     *          response=400,
-     *          description="Bad Request"
-     *      ),
-     *      @OA\Response(
-     *          response=401,
-     *          description="Unauthenticated",
-     *      ),
-     *      @OA\Response(
-     *          response=403,
-     *          description="Forbidden"
-     *      ),
-     *       @OA\Response(
-     *          response=404,
-     *          description="Not found"
-     *      ),
-     *     )
-     *
-     * Returns list of users
-     */
     public function index()
     {
         try {
@@ -61,141 +24,191 @@ class UserController extends Controller
         }
     }
 
-
     public function update(Request $request)
     {
-        $this->validate($request, [
-            
-        ]);
         $user = auth()->user();
-if ($request->file("file")) {
-    $fileName = time() . '_' . $request->file('file')->getClientOriginalName();
-    $destination = '/home1/owkvvkte/public_html/website_e166ca66/uploads';
-    
-    \Log::info('Saving to: ' . $destination);  // ADD THIS
-    
-    if (!is_dir($destination)) {
-        mkdir($destination, 0755, true);
-    }
-    
-    $request->file('file')->move($destination, $fileName);
-    $user->avatar = "https://workason.com/uploads/" . $fileName;
-}
-        if ($request->file("cv")) {
-            $cvFile = time() . '_' . $request->file('cv')->getClientOriginalName();
-            $request->file('cv')->move(public_path('uploads/cv'), $cvFile);
-            $user->cv = "/uploads/cv/" . $cvFile;
+
+        // ── Avatar upload ──────────────────────────────────────────────────
+        if ($request->hasFile('file')) {
+            try {
+                $request->validate([
+                    'file' => 'image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+                ]);
+
+                // Delete the old avatar if it was stored locally
+                if ($user->avatar && strpos($user->avatar, '/uploads/avatars/') === 0) {
+                    $oldFile = public_path($user->avatar);
+                    if (file_exists($oldFile)) {
+                        @unlink($oldFile);
+                    }
+                }
+
+                $uploadDir = public_path('uploads/avatars');
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+
+                $ext      = strtolower($request->file('file')->getClientOriginalExtension());
+                $fileName = time() . '_' . uniqid() . '.' . $ext;
+                $request->file('file')->move($uploadDir, $fileName);
+
+                $user->avatar = '/uploads/avatars/' . $fileName;
+
+                Log::info('Avatar saved: ' . $user->avatar . ' for user ' . $user->id);
+
+            } catch (\Exception $e) {
+                Log::error('Avatar upload failed for user ' . $user->id . ': ' . $e->getMessage());
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Image upload failed: ' . $e->getMessage(),
+                ], 422);
+            }
         }
-    
-        if ($request->country) {
-            $isCountry = Country::where("code", $request->country)->first();
+
+        // ── CV upload ──────────────────────────────────────────────────────
+        if ($request->hasFile('cv')) {
+            try {
+                $cvDir = public_path('uploads/cv');
+                if (!is_dir($cvDir)) {
+                    mkdir($cvDir, 0755, true);
+                }
+                $cvFile = time() . '_' . $request->file('cv')->getClientOriginalName();
+                $request->file('cv')->move($cvDir, $cvFile);
+                $user->cv = '/uploads/cv/' . $cvFile;
+            } catch (\Exception $e) {
+                Log::error('CV upload failed: ' . $e->getMessage());
+            }
+        }
+
+        // ── Location ───────────────────────────────────────────────────────
+        if ($request->filled('country')) {
+            $isCountry = Country::where('code', $request->country)->first();
             if ($isCountry) {
                 $user->country = $request->country;
             }
         }
 
-        if ($request->state) {
-            $isState = States::where("country_code", $request->country)->where("name", $request->state)->first();
+        if ($request->filled('state') && $request->filled('country')) {
+            $isState = States::where('country_code', $request->country)
+                             ->where('name', $request->state)
+                             ->first();
             if ($isState) {
                 $user->state = $request->state;
             }
         }
 
-        $user->name = $request->name ?? $user->name;
-        $user->bio = $request->bio ?? $user->bio;
-        $user->city = $request->city ?? $user->city;
-        $user->phone_no = $request->phone_no ?? $user->phone_no;
-        $user->address = $request->address ?? $user->address;
-        $user->education = $request->education ?? $user->education;
-        $user->experience = $request->experience ?? $user->experience;
-        $user->skills = $request->skills ?? $user->skills;
-        $user->expected_salary = $request->expected_salary ?? $user->expected_salary;
+        // ── Scalar fields ──────────────────────────────────────────────────
+        if ($request->filled('name'))            $user->name            = $request->name;
+        if ($request->filled('bio'))             $user->bio             = $request->bio;
+        if ($request->filled('city'))            $user->city            = $request->city;
+        if ($request->filled('zip_code'))        $user->zip_code        = $request->zip_code;
+        if ($request->filled('phone_no'))        $user->phone_no        = $request->phone_no;
+        if ($request->filled('address'))         $user->address         = $request->address;
+        if ($request->filled('education'))       $user->education       = $request->education;
+        if ($request->filled('experience'))      $user->experience      = $request->experience;
+        if ($request->filled('skills'))          $user->skills          = $request->skills;
+        if ($request->filled('expected_salary')) $user->expected_salary = $request->expected_salary;
+
         $user->save();
+
+        // Re-fetch through UserResource so avatar URL is fully resolved
+        $fresh = User::with(['socials', 'Role'])->find($user->id);
+
         return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => 'Profile updated successfully.',
-            'data' => $user->fresh(['socials', 'Role']),
+            'data'    => (new UserResource($fresh))->resolve(),
         ]);
     }
 
     public function show()
     {
-        $id = auth()->id();
-        $user = User::with(["socials", "Role"])->where("id", $id)->first();
+        $id   = auth()->id();
+        $user = User::with(['socials', 'Role'])->where('id', $id)->first();
         return new UserResource($user);
     }
 
     public function updateSmartCv(Request $request)
-{
-    $request->validate([
-        'smartcv' => 'required|string'
-    ]);
-
-    $user = auth()->user();
-    $user->smartcv = $request->smartcv;
-    $user->save();
-
-    return response()->json([
-        'status' => 'success',
-        'message' => 'SmartCV updated',
-        'smartcv' => $user->smartcv
-    ]);
-}
+    {
+        $request->validate(['smartcv' => 'required|string']);
+        $user = auth()->user();
+        $user->smartcv = $request->smartcv;
+        $user->save();
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'SmartCV updated',
+            'smartcv' => $user->smartcv,
+        ]);
+    }
 
     public function deleteAvatar()
     {
-        $id = auth()->id();
+        $id   = auth()->id();
         $user = auth()->user();
-        if (File::exists(public_path($user->avatar))) {
-            // Delete the file
-            File::delete(public_path($user->avatar));
+
+        if ($user->avatar && strpos($user->avatar, '/uploads/avatars/') === 0) {
+            $filePath = public_path($user->avatar);
+            if (file_exists($filePath)) {
+                @unlink($filePath);
+            }
         }
+
         $user->avatar = null;
         $user->save();
-        $user = User::with(["socials", "Role"])->where("id", $id)->first();
-        return new UserResource($user);
+
+        $fresh = User::with(['socials', 'Role'])->where('id', $id)->first();
+        return new UserResource($fresh);
     }
-    public function updateSocial(Request $request, $id) {
-        $val = $request->value;
-        $soc = SocialMedia::where("user_id", auth()->id())->where("id", $id)->first();
-        $soc->value = $val;
+
+    public function updateSocial(Request $request, $id)
+    {
+        $soc = SocialMedia::where('user_id', auth()->id())->where('id', $id)->first();
+        $soc->value = $request->value;
         $soc->save();
-        return okResponse("success");
+        return okResponse('success');
     }
 
-    public function deleteSocial(Request $request, $id) {
-        SocialMedia::where("user_id", auth()->id())->where("id", $id)->delete();
-        return okResponse("success");
+    public function deleteSocial(Request $request, $id)
+    {
+        SocialMedia::where('user_id', auth()->id())->where('id', $id)->delete();
+        return okResponse('success');
     }
 
-    public function addSocial(Request $request) {
+    public function addSocial(Request $request)
+    {
         SocialMedia::create([
-            "label" => $request->label,
-            "value" => $request->value,
-            "user_id" => auth()->id()
+            'label'   => $request->label,
+            'value'   => $request->value,
+            'user_id' => auth()->id(),
         ]);
-        return okResponse("added");
+        return okResponse('added');
     }
 
-    public function changePassword(Request $request) {
-        $validated = $request->validate(['current_password' => "required", 'password' => 'required|string|confirmed|min:8']);
+    public function changePassword(Request $request)
+    {
+        $validated = $request->validate([
+            'current_password' => 'required',
+            'password'         => 'required|string|confirmed|min:8',
+        ]);
         try {
-            $user= User::where('email', auth()->user()->email)->first();
-            if(!$user){
-                return errorResponse("User not found");
+            $user = User::where('email', auth()->user()->email)->first();
+            if (!$user) return errorResponse('User not found');
+            if (!Hash::check($validated['current_password'], $user->password)) {
+                return errorResponse('Current password is invalid');
             }
-            if(!Hash::check($validated["current_password"], $user->password))return errorResponse("Current password is invalid");
             User::where('email', auth()->user()->email)
                 ->update(['password' => bcrypt($validated['password'])]);
-                return okResponse("Password updated");
+            return okResponse('Password updated');
         } catch (\Exception $e) {
             return response()->json(['message' => 'Password update failed']);
         }
     }
-    public function deleteAccount(Request $request) {
-        $user= User::where('email', auth()->user()->email)->first();
-        $user->status = "deleted";
+
+    public function deleteAccount(Request $request)
+    {
+        $user = User::where('email', auth()->user()->email)->first();
+        $user->status = 'deleted';
         $user->save();
-        return okResponse("Account deleted");
+        return okResponse('Account deleted');
     }
 }

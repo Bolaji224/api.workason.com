@@ -35,8 +35,9 @@ class BrowseCandidatesController extends Controller
             ]);
         }
 
-        // Fetch all candidate users (role = 1)
+        // Fetch only admin-approved candidates
 $candidates = User::where('role', 1)
+->where('is_approved', true)
 ->select(
     'id',
     'name',
@@ -57,10 +58,29 @@ $candidates = User::where('role', 1)
 ->get();
 
 return response()->json([
-'status' => 'success',
-'payment_required' => false,
-'message' => 'Fetched candidate list successfully.',
-'data' => $candidates,
+    'status'           => 'success',
+    'payment_required' => false,
+    'message'          => 'Fetched candidate list successfully.',
+    'data'             => $candidates->map(function ($c) {
+        return [
+            'id'              => $c->id,
+            'name'            => $c->name,
+            'first_name'      => $c->first_name,
+            'last_name'       => $c->last_name,
+            'email'           => $c->email,
+            'avatar'          => $c->avatar ? url($c->avatar) : null,
+            'bio'             => $c->bio,
+            'skills'          => $c->skills,
+            'education'       => $c->education,
+            'experience'      => $c->experience,
+            'expected_salary' => $c->expected_salary,
+            'city'            => $c->city,
+            'country'         => $c->country,
+            'cv'              => $c->cv ? url($c->cv) : null,
+            'smartcv'         => $c->smartcv ? url($c->smartcv) : null,
+            'completed_jobs'  => 0,
+        ];
+    }),
 ]);
     }
 
