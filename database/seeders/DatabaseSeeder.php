@@ -105,5 +105,10 @@ class DatabaseSeeder extends Seeder
             $job->date_published = now();
             $job->save();
         }
+
+        // Seed default CMS content for all platform modules.
+        // Safe to include here — CmsSettingsSeeder uses updateOrCreate
+        // and will not overwrite existing admin edits.
+        $this->call(CmsSettingsSeeder::class);
     }
 }
