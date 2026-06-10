@@ -61,7 +61,7 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
             Route::get('/payments', [EmployerPaymentController::class, 'getAllPayments']);
             Route::post('/approve-payment', [EmployerPaymentController::class, 'approvePayment']);
             Route::post('/reject-payment', [EmployerPaymentController::class, 'rejectPayment']);
-            Route::get('/dashboard', [AdminDashboardController::class, 'index']); // ✅ FIXED: Removed /admin prefix (already in group)
+            Route::get('/dashboard', [AdminDashboardController::class, 'index']); // FIXED: Removed /admin prefix (already in group)
             
 
 
@@ -71,10 +71,17 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
             Route::post('/reject-withdrawal', [AdminWithdrawalController::class, 'reject']);
 
             Route::get('/employers', [AdminEmployerController::class, 'index']);
+            Route::post('/employers/{id}/suspend', [AdminEmployerController::class, 'suspend']);
+            Route::post('/employers/{id}/unsuspend', [AdminEmployerController::class, 'unsuspend']);
+            Route::delete('/employers/{id}', [AdminEmployerController::class, 'destroy']);
+
             Route::get('/freelancers', [AdminFreelancerController::class, 'index']);
             Route::get('/freelancers/{id}', [AdminFreelancerController::class, 'show']);
             Route::post('/freelancers/{id}/approve', [AdminFreelancerController::class, 'approve']);
             Route::post('/freelancers/{id}/revoke', [AdminFreelancerController::class, 'revoke']);
+            Route::post('/freelancers/{id}/suspend', [AdminFreelancerController::class, 'suspend']);
+            Route::post('/freelancers/{id}/unsuspend', [AdminFreelancerController::class, 'unsuspend']);
+            Route::delete('/freelancers/{id}', [AdminFreelancerController::class, 'destroy']);
             Route::get('/jobs', [AdminJobController::class, 'index']);
             Route::post('/jobs/approve', [AdminJobController::class, 'approve']);
             Route::post('/jobs/delete', [AdminJobController::class, 'delete']);

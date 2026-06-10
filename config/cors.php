@@ -31,14 +31,15 @@ return [
      * Matches the request origin. `[*]` allows all origins.
      */
     'allowed_origins' => [
-    'https://workason.com',
-    'https://www.workason.com',
-    'https://workason.site',
-    'https://www.workason.site',
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'https://admin.workason.com',
-],
+        'https://workason.com',
+        'https://www.workason.com',
+        'https://workason.site',
+        'https://www.workason.site',
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'https://admin.workason.com',
+        'https://admin.workason.site',
+    ],
     /*
      * Matches the request origin with, similar to `Request::is()`
      */

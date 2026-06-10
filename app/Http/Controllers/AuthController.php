@@ -143,7 +143,7 @@ class AuthController extends Controller
         }
 
         if (!$token = auth()->attempt(['email' => $validated['email'], 'password' => $validated['password']])) {
-            return errorResponse("Invalid login combination", 400);
+            return errorResponse("Invalid email or password", [], 401);
         }
 
         try {
