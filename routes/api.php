@@ -31,6 +31,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\NewsletterController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\CmsSettingsController;
 
 
 /*
@@ -90,7 +91,20 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
             Route::get('/reports', [ReportController::class, 'index']);
             Route::delete('/users/{id}', [AdminUserController::class, 'destroy']);
             Route::post('/reports/{id}/resolve', [ReportController::class, 'resolve']);
-            
+
+            // ── CMS Settings (admin) ──────────────────────────────────────────
+            Route::prefix('cms')->group(function () {
+                // List all modules with full metadata (id, version, timestamps).
+                Route::get('/settings', [CmsSettingsController::class, 'adminIndex']);
+                // Create or update a single module's content.
+                // XssSanitizer is bypassed here because CKEditor fields contain
+                // legitimate HTML. The controller applies its own selective
+                // sanitization: dangerous tags are stripped from HTML fields,
+                // strip_tags() is applied to all plain-text fields.
+                Route::put('/settings/{module}', [CmsSettingsController::class, 'update'])
+                    ->withoutMiddleware(\App\Http\Middleware\XssSanitizer::class);
+            });
+
         });
 
         Route::get('test-auth', function (Request $request) {
@@ -295,6 +309,14 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
         // Reviews (public read, no auth required)
         Route::get('/reviews/freelancer/{id}', [ReviewController::class, 'getFreelancerReviews']);
         Route::get('/reviews/freelancer/{id}/summary', [ReviewController::class, 'getFreelancerSummary']);
+
+        // ── CMS Settings (public — no auth required) ─────────────────────────
+        // The kason frontend fetches this once on app startup to hydrate
+        // the Redux CMS slice. No sensitive data is exposed here.
+        Route::prefix('cms')->group(function () {
+            Route::get('/settings',           [CmsSettingsController::class, 'index']);
+            Route::get('/settings/{module}',  [CmsSettingsController::class, 'show']);
+        });
 
         Route::post('newsletter', [NewsletterController::class, 'subscribe']);
         Route::post('/contact', [ContactController::class, 'send']);

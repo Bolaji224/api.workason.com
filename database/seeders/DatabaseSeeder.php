@@ -106,9 +106,9 @@ class DatabaseSeeder extends Seeder
             $job->save();
         }
 
-        $this->call([
-            CountrySeeder::class,
-            StateSeeder::class,
-        ]);
+        // Seed default CMS content for all platform modules.
+        // Safe to include here — CmsSettingsSeeder uses updateOrCreate
+        // and will not overwrite existing admin edits.
+        $this->call(CmsSettingsSeeder::class);
     }
 }
