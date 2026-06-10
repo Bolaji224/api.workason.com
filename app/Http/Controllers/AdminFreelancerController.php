@@ -45,8 +45,9 @@ class AdminFreelancerController extends Controller
                     'skills'      => $u->skills,
                     'city'        => $u->city,
                     'country'     => $u->country,
-                    'is_approved' => (bool) $u->is_approved,
-                    'joined_at'   => $u->created_at ? $u->created_at->format('M d, Y') : null,
+                    'is_approved'  => (bool) $u->is_approved,
+                    'is_suspended' => (bool) $u->is_suspended,
+                    'joined_at'    => $u->created_at ? $u->created_at->format('M d, Y') : null,
                 ];
             });
 
@@ -88,10 +89,11 @@ class AdminFreelancerController extends Controller
                     'skills'      => $u->skills,
                     'city'        => $u->city,
                     'country'     => $u->country,
-                    'is_approved' => (bool) $u->is_approved,
-                    'joined_at'   => $u->created_at ? $u->created_at->format('M d, Y') : null,
-                    'cv'          => $u->cv ? url($u->cv) : null,
-                    'smartcv'     => $u->smartcv ? url($u->smartcv) : null,
+                    'is_approved'  => (bool) $u->is_approved,
+                    'is_suspended' => (bool) $u->is_suspended,
+                    'joined_at'    => $u->created_at ? $u->created_at->format('M d, Y') : null,
+                    'cv'           => $u->cv ? url($u->cv) : null,
+                    'smartcv'      => $u->smartcv ? url($u->smartcv) : null,
                 ],
             ]);
 
@@ -142,6 +144,68 @@ class AdminFreelancerController extends Controller
             return response()->json([
                 'status'  => 'error',
                 'message' => 'Failed to revoke approval.',
+            ], 500);
+        }
+    }
+
+    public function suspend($id)
+    {
+        try {
+            $u = User::where('role', 1)->findOrFail($id);
+            $u->update(['is_suspended' => true]);
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Freelancer suspended.',
+                'data'    => ['id' => $u->id, 'is_suspended' => true],
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('AdminFreelancerController@suspend: ' . $e->getMessage());
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Failed to suspend freelancer.',
+            ], 500);
+        }
+    }
+
+    public function unsuspend($id)
+    {
+        try {
+            $u = User::where('role', 1)->findOrFail($id);
+            $u->update(['is_suspended' => false]);
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Freelancer unsuspended.',
+                'data'    => ['id' => $u->id, 'is_suspended' => false],
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('AdminFreelancerController@unsuspend: ' . $e->getMessage());
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Failed to unsuspend freelancer.',
+            ], 500);
+        }
+    }
+
+    public function destroy($id)
+    {
+        try {
+            $u = User::where('role', 1)->findOrFail($id);
+            $u->delete();
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Freelancer deleted.',
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('AdminFreelancerController@destroy: ' . $e->getMessage());
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Failed to delete freelancer.',
             ], 500);
         }
     }

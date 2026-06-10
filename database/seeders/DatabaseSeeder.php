@@ -105,5 +105,10 @@ class DatabaseSeeder extends Seeder
             $job->date_published = now();
             $job->save();
         }
+
+        $this->call([
+            CountrySeeder::class,
+            StateSeeder::class,
+        ]);
     }
 }

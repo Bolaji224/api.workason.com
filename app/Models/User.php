@@ -54,6 +54,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
         'google_id',    // Add this
         'picture',      // Add this
         'is_approved',
+        'is_suspended',
     ];
 
     /**
@@ -77,6 +78,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
     protected $casts = [
         'email_verified_at' => 'datetime',
         'is_approved' => 'boolean',
+        'is_suspended' => 'boolean',
     ];
 
     public function getJWTIdentifier()
