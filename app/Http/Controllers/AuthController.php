@@ -18,7 +18,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Wallet;
-use Tymon\JWTAuth\Facades\JWTAuth; 
+use App\Services\AffiliateService;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
@@ -89,6 +90,23 @@ class AuthController extends Controller
             'balance' => 0,
             'currency' => 'NGN',
         ]);
+
+        // Auto-enrol every new user into the affiliate programme
+        try {
+            $affiliateService = new AffiliateService();
+            $affiliateService->register($user);
+
+            // If the registration came through a referral link, attribute it
+            $referralToken = $request->input('referral_token');
+            if ($referralToken) {
+                $affiliateService->attributeRegistration($user, $referralToken);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Affiliate auto-enrolment failed silently', [
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
+        }
 
         // Automatically send email verification
         event(new Registered($user));
@@ -266,6 +284,16 @@ class AuthController extends Controller
                     'balance' => 0,
                     'currency' => 'NGN',
                 ]);
+
+                // Auto-enrol Google-registered users into affiliate programme
+                try {
+                    (new AffiliateService())->register($user);
+                } catch (\Throwable $e) {
+                    \Log::warning('Affiliate auto-enrolment (Google) failed silently', [
+                        'user_id' => $user->id,
+                        'error'   => $e->getMessage(),
+                    ]);
+                }
             }
 
             // Generate JWT token

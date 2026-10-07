@@ -21,6 +21,7 @@ class AdminAuth
                 ->first();
 
             if ($user && ($user->role === 'admin' || $user->role === 'super_admin')) {
+                auth()->setUser($user);
                 $request->setUserResolver(function () use ($user) {
                     return $user;
                 });

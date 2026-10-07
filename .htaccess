@@ -1,8 +1,20 @@
+<IfModule mod_headers.c>
+    SetEnvIf Origin "^(https://workason\.com|https://www\.workason\.com|https://admin\.workason\.com|https://workason\.site|https://www\.workason\.site|https://admin\.workason\.site)$" CORS_ORIGIN=$0
+    Header always set Access-Control-Allow-Origin "%{CORS_ORIGIN}e" env=CORS_ORIGIN
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Authorization, Content-Type, Accept, X-Requested-With"
+    Header always set Access-Control-Allow-Credentials "false"
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
     </IfModule>
     RewriteEngine On
+
+    # Route OPTIONS preflight through to Laravel so CORS middleware handles it
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ index.php [L]
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
@@ -13,7 +25,7 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Send ALL Requests To Front Controller (including OPTIONS)
+    # Send ALL Requests To Front Controller
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]

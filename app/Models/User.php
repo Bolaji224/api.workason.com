@@ -55,6 +55,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
         'picture',      // Add this
         'is_approved',
         'is_suspended',
+        'referred_by',
     ];
 
     /**
