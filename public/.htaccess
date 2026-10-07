@@ -5,6 +5,10 @@
 
     RewriteEngine On
 
+    # Route OPTIONS preflight through to Laravel so CORS middleware handles it
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ index.php [L]
+
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 

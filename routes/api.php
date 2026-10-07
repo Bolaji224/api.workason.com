@@ -26,12 +26,15 @@ use Illuminate\Support\Facades\Broadcast;
 use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\SmartStartController;
+use App\Http\Controllers\Admin\AdminSmartStartController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\NewsletterController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\CmsSettingsController;
+use App\Http\Controllers\AffiliateController;
+use App\Http\Controllers\Admin\AdminAffiliateController;
 
 
 /*
@@ -91,6 +94,69 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
             Route::get('/reports', [ReportController::class, 'index']);
             Route::delete('/users/{id}', [AdminUserController::class, 'destroy']);
             Route::post('/reports/{id}/resolve', [ReportController::class, 'resolve']);
+
+            // ── SmartStart (admin) ────────────────────────────────────────────
+            Route::prefix('smartstart')->group(function () {
+                Route::get('/', [AdminSmartStartController::class, 'index']);
+                Route::get('/{id}', [AdminSmartStartController::class, 'show']);
+                Route::post('/{id}/mark-paid', [AdminSmartStartController::class, 'markPaid']);
+                Route::post('/{id}/assign', [AdminSmartStartController::class, 'assign']);
+            });
+
+            // ── Referrals (admin — top-level shorthand) ───────────────────────
+            Route::prefix('referrals')->group(function () {
+                Route::get('/',       [AdminAffiliateController::class, 'allReferrals']);
+                Route::get('/{id}',   [AdminAffiliateController::class, 'showReferral']);
+            });
+
+            // ── Commissions (admin — top-level shorthand) ─────────────────────
+            Route::prefix('commissions')->group(function () {
+                Route::get('/',                    [AdminAffiliateController::class, 'allCommissions']);
+                Route::post('/{id}/approve',       [AdminAffiliateController::class, 'approveCommission']);
+                Route::post('/{id}/reject',        [AdminAffiliateController::class, 'rejectCommission']);
+                Route::post('/{id}/mark-paid',     [AdminAffiliateController::class, 'markPaid']);
+            });
+
+            // ── Affiliate payments (admin — paid commissions history) ──────────
+            Route::get('/affiliate-payments', [AdminAffiliateController::class, 'affiliatePayments']);
+
+            // ── Affiliate (admin) — both /affiliate and /affiliates supported ───
+            Route::prefix('affiliates')->group(function () {
+                Route::get('/stats',                               [AdminAffiliateController::class, 'overview']);
+                Route::get('/overview',                            [AdminAffiliateController::class, 'overview']);
+                Route::get('/',                                    [AdminAffiliateController::class, 'index']);
+                Route::get('/referrals',                           [AdminAffiliateController::class, 'allReferrals']);
+                Route::get('/referrals/{id}',                      [AdminAffiliateController::class, 'showReferral']);
+                Route::get('/commissions',                         [AdminAffiliateController::class, 'allCommissions']);
+                Route::post('/commissions/{id}/approve',           [AdminAffiliateController::class, 'approveCommission']);
+                Route::post('/commissions/{id}/reject',            [AdminAffiliateController::class, 'rejectCommission']);
+                Route::post('/commissions/{id}/mark-paid',         [AdminAffiliateController::class, 'markPaid']);
+                Route::get('/{id}',                                [AdminAffiliateController::class, 'show']);
+                Route::get('/{id}/referrals',                      [AdminAffiliateController::class, 'referrals']);
+                Route::get('/{id}/commissions',                    [AdminAffiliateController::class, 'commissions']);
+                Route::patch('/{id}/status',                       [AdminAffiliateController::class, 'updateStatus']);
+                Route::post('/{id}/suspend',                       [AdminAffiliateController::class, 'suspend']);
+                Route::post('/{id}/activate',                      [AdminAffiliateController::class, 'activate']);
+            });
+
+            Route::prefix('affiliate')->group(function () {
+                // Specific static routes first (before any /{id} wildcards)
+                Route::get('/',                                    [AdminAffiliateController::class, 'index']);
+                Route::get('/overview',                            [AdminAffiliateController::class, 'overview']);
+                Route::get('/referrals',                           [AdminAffiliateController::class, 'allReferrals']);
+                Route::get('/referrals/{id}',                      [AdminAffiliateController::class, 'showReferral']);
+                Route::get('/commissions',                         [AdminAffiliateController::class, 'allCommissions']);
+                Route::post('/commissions/{id}/approve',           [AdminAffiliateController::class, 'approveCommission']);
+                Route::post('/commissions/{id}/reject',            [AdminAffiliateController::class, 'rejectCommission']);
+                Route::post('/commissions/{id}/mark-paid',         [AdminAffiliateController::class, 'markPaid']);
+                // Wildcard /{id} routes last
+                Route::get('/{id}',                                [AdminAffiliateController::class, 'show']);
+                Route::get('/{id}/referrals',                      [AdminAffiliateController::class, 'referrals']);
+                Route::get('/{id}/commissions',                    [AdminAffiliateController::class, 'commissions']);
+                Route::patch('/{id}/status',                       [AdminAffiliateController::class, 'updateStatus']);
+                Route::post('/{id}/suspend',                       [AdminAffiliateController::class, 'suspend']);
+                Route::post('/{id}/activate',                      [AdminAffiliateController::class, 'activate']);
+            });
 
             // ── CMS Settings (admin) ──────────────────────────────────────────
             Route::prefix('cms')->group(function () {
@@ -252,11 +318,19 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
                 Route::get('/payments', [EmployerPaymentController::class, 'getPayments']);
                 Route::post('/verify-payment', [EmployerPaymentController::class, 'verifyPayment']);
                 Route::post('/send-message', [ChatController::class, 'sendMessage']);
-                    Route::post('/smartstart', [SmartStartController::class, 'store'])
-    ->withoutMiddleware(\App\Http\Middleware\XssSanitizer::class);
-    Route::get('/smartstart/callback', [SmartStartController::class, 'callback'])->name('smartstart.callback');
-         Route::get('/smartstart/success', [SmartStartController::class, 'success'])->name('smartstart.success');
-    Route::get('/smartstart/failed', [SmartStartController::class, 'failed'])->name('smartstart.failed');
+                // ── SmartStart (employer) ─────────────────────────────────
+                Route::prefix('smartstart')->group(function () {
+                    Route::get('/', [SmartStartController::class, 'index']);
+                    Route::post('/', [SmartStartController::class, 'store'])
+                        ->withoutMiddleware(\App\Http\Middleware\XssSanitizer::class);
+                    Route::post('/verify-payment', [SmartStartController::class, 'verifyPayment']);
+                    Route::get('/callback', [SmartStartController::class, 'callback'])->name('smartstart.callback');
+                    Route::get('/success', [SmartStartController::class, 'success'])->name('smartstart.success');
+                    Route::get('/failed', [SmartStartController::class, 'failed'])->name('smartstart.failed');
+                    Route::get('/{id}', [SmartStartController::class, 'show']);
+                    Route::post('/{id}/select-freelancer', [SmartStartController::class, 'selectFreelancer']);
+                    Route::post('/{id}/select', [SmartStartController::class, 'selectFreelancer']);
+                });
 
                 // Review routes (employer only, auth required)
                 Route::post('/reviews', [ReviewController::class, 'store']);
@@ -320,5 +394,23 @@ Route::group(['middleware' => 'XssSanitizer'], function () {
 
         Route::post('newsletter', [NewsletterController::class, 'subscribe']);
         Route::post('/contact', [ContactController::class, 'send']);
+
+        // ── Referral click tracking (public — no auth required) ───────────────
+        Route::get('/referral/click/{code}', [AffiliateController::class, 'trackClick']);
+
+        // ── Affiliate (authenticated users) ──────────────────────────────────
+        Route::middleware(['verified', 'jwt.verify', 'auth:api'])
+            ->prefix('affiliate')
+            ->group(function () {
+                Route::post('/register',     [AffiliateController::class, 'register']);
+                Route::get('/dashboard',     [AffiliateController::class, 'dashboard']);
+                Route::get('/profile',       [AffiliateController::class, 'profile']);
+                Route::get('/referral-link', [AffiliateController::class, 'referralLink']);
+                Route::get('/referrals',     [AffiliateController::class, 'referrals']);
+                Route::get('/commissions',   [AffiliateController::class, 'commissions']);
+                Route::get('/terms',         [AffiliateController::class, 'terms']);
+                Route::get('/payments',      [AffiliateController::class, 'payments']);
+                Route::post('/accept-terms', [AffiliateController::class, 'acceptTerms']);
+            });
     });
 });

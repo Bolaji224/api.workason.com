@@ -6,6 +6,7 @@ use App\Models\WalletToken;
 use App\Models\EmployerPayment;
 use App\Models\Milestone;
 use App\Models\Wallet;
+use App\Services\AffiliateService;
 use App\Services\PaystackService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -399,6 +400,17 @@ class EmployerPaymentController extends Controller
             }
 
             DB::commit();
+
+            // Affiliate commission — runs outside the DB transaction so a
+            // commission failure never rolls back the payment approval.
+            try {
+                (new AffiliateService())->processConversion($payment->fresh());
+            } catch (\Throwable $e) {
+                Log::error('Affiliate commission processing failed', [
+                    'payment_id' => $payment->id,
+                    'error'      => $e->getMessage(),
+                ]);
+            }
 
             return response()->json([
                 'status' => 'success',
